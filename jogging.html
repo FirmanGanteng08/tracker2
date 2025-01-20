@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogging Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .info {
+            margin: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Jogging Tracker</h1>
+    <div class="info">
+        <h2>Waktu: <span id="time">0</span> detik</h2>
+        <h2>Jarak: <span id="distance">0</span> meter</h2>
+        <h2>Kecepatan: <span id="speed">0</span> meter/detik</h2>
+        <button id="startButton" onclick="startTracking()">Mulai</button>
+        <button id="stopButton" onclick="stopTracking()" disabled>Berhenti</button>
+    </div>
+    
+    <script>
+        let watchID;
+        let startTime;
+        let distance = 0;
+        let lastPosition = null;
+        let timer;
+
+        function startTracking() {
+            if (navigator.geolocation) {
+                startTime = Date.now();
+                distance = 0;
+                lastPosition = null;
+                document.getElementById("time").innerText = 0;
+                document.getElementById("distance").innerText = 0;
+                document.getElementById("speed").innerText = 0;
+                
+                watchID = navigator.geolocation.watchPosition(updatePosition, showError, {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 5000
+                });
+                
+                timer = setInterval(updateTime, 1000);
+                document.getElementById("startButton").disabled = true;
+                document.getElementById("stopButton").disabled = false;
+            } else {
+                alert("Geolocation tidak didukung di browser Anda.");
+            }
+        }
+
+        function stopTracking() {
+            navigator.geolocation.clearWatch(watchID);
+            clearInterval(timer);
+            document.getElementById("startButton").disabled = false;
+            document.getElementById("stopButton").disabled = true;
+        }
+
+        function updateTime() {
+            let currentTime = Math.floor((Date.now() - startTime) / 1000);
+            document.getElementById("time").innerText = currentTime;
+        }
+
+        function updatePosition(position) {
+            let lat = position.coords.latitude;
+            let lon = position.coords.longitude;
+
+            if (lastPosition) {
+                let d = getDistance(lastPosition.lat, lastPosition.lon, lat, lon) * 1000; // Ubah hasil dari kilometer ke meter
+                if (d > 1) {
+                    distance += d;
+                    document.getElementById("distance").innerText = Math.floor(distance);
+                }
+            }
+            lastPosition = { lat, lon };
+            
+            let currentTime = Math.floor((Date.now() - startTime) / 1000);
+            let speed = currentTime > 0 ? (distance / currentTime) : 0; // Kecepatan dalam meter per detik
+            document.getElementById("speed").innerText = speed.toFixed(2);
+        }
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius bumi dalam kilometer
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // Hasilnya dalam kilometer
+        }
+
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Izin lokasi ditolak.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Lokasi tidak tersedia.");
+                    break;
+                case error.TIMEOUT:
+                    alert("Waktu permintaan lokasi habis.");
+                    break;
+                default:
+                    alert("Terjadi kesalahan.");
+            }
+        }
+    </script>
+</body>
+</html>
